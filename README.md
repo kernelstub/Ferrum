@@ -27,53 +27,6 @@ From Linux/macOS:
 
 ```cmd
 ferrum.exe --HELP
-ferrum.exe --ALL --VERBOSE
-ferrum.exe --ALL --OUTPUT ferrum-reports
-ferrum.exe --CLSID
-ferrum.exe --CLSID --OUTPUT clsid.txt
-ferrum.exe --TOKENS
-ferrum.exe --REGISTRY
-ferrum.exe --POLICY
-ferrum.exe --DLLSEARCH
-ferrum.exe --SERVICES
-ferrum.exe --DRIVERS
-ferrum.exe --PIPES
-ferrum.exe --STARTUP
-ferrum.exe --SCHEDULED
-ferrum.exe --ENV
-ferrum.exe --MITIGATIONS
-ferrum.exe --AUTORUNS
-ferrum.exe --IFEO
-ferrum.exe --SILENTEXIT
-ferrum.exe --WINLOGON
-ferrum.exe --LSA
-ferrum.exe --APPINIT
-ferrum.exe --APPCERT
-ferrum.exe --UAC
-ferrum.exe --INSTALLER
-ferrum.exe --POWERSHELL
-ferrum.exe --APPLOCKER
-ferrum.exe --WDAC
-ferrum.exe --DEFENDER
-ferrum.exe --FIREWALL
-ferrum.exe --RDP
-ferrum.exe --WMI
-ferrum.exe --HOSTS
-ferrum.exe --SHARES
-ferrum.exe --SHELL
-ferrum.exe --BROWSER
-ferrum.exe --PROTOCOLS
-ferrum.exe --COMLOCAL
-ferrum.exe --KNOWNDLLS
-ferrum.exe --SVCPATHS
-ferrum.exe --DRIVERPATHS
-ferrum.exe --CERTIFICATES
-ferrum.exe --NETWORKPROVIDERS
-ferrum.exe --PRINT
-ferrum.exe --WINSOCK
-ferrum.exe --ACCESSIBILITY
-ferrum.exe --CLSID --VERBOSE
-ferrum.exe --CLSID --QUIET
 ```
 
 ## Architecture
