@@ -1,5 +1,8 @@
 # FERRUM
 
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/924c39a5-5f9d-44b1-b9a3-ecd424140408" />
+
+
 Ferrum is a Windows-first vulnerability research and security auditing framework written in Go. It is designed as a single binary, `ferrum.exe`, with modules registered through a small core interface.
 
 ## Build
