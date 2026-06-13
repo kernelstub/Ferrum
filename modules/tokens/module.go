@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"ferrum/core"
-	"ferrum/internal"
 	win "ferrum/windows/facade"
 )
 
@@ -35,19 +34,24 @@ func (Module) Run(ctx *core.Context) error {
 		}
 		return findings[i].Name < findings[j].Name
 	})
+	ctx.Logger.Info(fmt.Sprintf("Process tokens inspected: %d", len(findings)))
 	reported := 0
 	for _, finding := range findings {
+		if finding.Error != "" {
+			ctx.Logger.Verbose(fmt.Sprintf("%s[%d] : token inspection failed: %s", finding.Name, finding.PID, finding.Error))
+			continue
+		}
+		ctx.Logger.Verbose(fmt.Sprintf("token inventory : name=%s pid=%d %s privileges=%s", finding.Name, finding.PID, finding.Process.Label(), strings.Join(finding.Privileges, ",")))
 		if finding.Score == 0 {
 			continue
 		}
 		reported++
 		ctx.Logger.Success(fmt.Sprintf("%s[%d] > %s", finding.Name, finding.PID, strings.Join(finding.Reasons, ", ")))
-		ctx.Logger.Verbose(fmt.Sprintf("%s[%d] : %s privileges=%s", finding.Name, finding.PID, finding.Process.Label(), strings.Join(internal.Limit(finding.Privileges, 12), ",")))
+		ctx.Logger.Verbose(fmt.Sprintf("%s[%d] : %s privileges=%s", finding.Name, finding.PID, finding.Process.Label(), strings.Join(finding.Privileges, ",")))
 	}
 	if reported == 0 {
 		ctx.Logger.Info("No accessible process tokens matched the sensitive privilege heuristics.")
 	}
-	ctx.Logger.Verbose(fmt.Sprintf("Processes inspected: %d", len(processes)))
 	return nil
 }
 
@@ -55,6 +59,7 @@ type tokenFinding struct {
 	win.Process
 	Reasons []string
 	Score   int
+	Error   string
 }
 
 func inspect(processes []win.Process) []tokenFinding {
@@ -78,6 +83,8 @@ func inspect(processes []win.Process) []tokenFinding {
 					finding.Elevated = token.Elevated
 					finding.Privileges = token.Privileges
 					finding.Reasons, finding.Score = tokenReasons(token)
+				} else {
+					finding.Error = err.Error()
 				}
 				results <- finding
 			}
@@ -130,5 +137,5 @@ func tokenReasons(token win.TokenInfo) ([]string, int) {
 			score += points
 		}
 	}
-	return internal.Limit(reasons, 8), score
+	return reasons, score
 }

@@ -10,8 +10,6 @@ import (
 	wintypes "ferrum/windows/types"
 )
 
-const advancedLimit = 120
-
 type AdvancedFinding = wintypes.AdvancedFinding
 
 func EnumerateAdvancedFindings(check string) ([]AdvancedFinding, error) {
@@ -84,5 +82,5 @@ func EnumerateAdvancedFindings(check string) ([]AdvancedFinding, error) {
 		findings = genericSurfaceFindings(check)
 	}
 	sortAdvanced(findings)
-	return limitAdvanced(findings), nil
+	return findings, nil
 }

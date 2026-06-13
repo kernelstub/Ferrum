@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"ferrum/core"
-	"ferrum/internal"
 	win "ferrum/windows/facade"
 )
 
@@ -35,7 +34,7 @@ func (Module) Run(ctx *core.Context) error {
 		ctx.Logger.Success(fmt.Sprintf("%s > %s", pipe.Name, reason))
 	}
 	ctx.Logger.Verbose(fmt.Sprintf("Pipes enumerated: %d", len(pipes)))
-	for _, pipe := range internal.Limit(pipes, 50) {
+	for _, pipe := range pipes {
 		ctx.Logger.Verbose(fmt.Sprintf("pipe : %s", pipe.Name))
 	}
 	if reported == 0 {

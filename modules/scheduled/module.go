@@ -24,8 +24,10 @@ func (Module) Run(ctx *core.Context) error {
 	if err != nil {
 		return err
 	}
+	ctx.Logger.Info(fmt.Sprintf("Scheduled tasks enumerated: %d", len(tasks)))
 	reported := 0
 	for _, task := range tasks {
+		ctx.Logger.Verbose(fmt.Sprintf("task inventory : path=%s enabled=%s author=%s command=%s", task.Path, task.Enabled, task.Author, task.Command))
 		reason := taskReason(task)
 		if reason == "" {
 			continue
@@ -37,7 +39,6 @@ func (Module) Run(ctx *core.Context) error {
 	if reported == 0 {
 		ctx.Logger.Info("No scheduled tasks matched the default interesting-command heuristics.")
 	}
-	ctx.Logger.Verbose(fmt.Sprintf("Tasks enumerated: %d", len(tasks)))
 	return nil
 }
 

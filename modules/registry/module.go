@@ -27,6 +27,7 @@ func (Module) Run(ctx *core.Context) error {
 		ctx.Logger.Info("No sensitive registry findings matched the configured checks.")
 		return nil
 	}
+	ctx.Logger.Info(fmt.Sprintf("Registry findings returned: %d", len(findings)))
 	for _, finding := range findings {
 		ctx.Logger.Success(fmt.Sprintf("%s %s\\%s > %s: %s", finding.Severity, finding.Scope, finding.Path, finding.Name, finding.Reason))
 		if finding.Value != "" {

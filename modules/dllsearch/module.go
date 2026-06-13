@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"ferrum/core"
-	"ferrum/internal"
 	win "ferrum/windows/facade"
 )
 
@@ -24,6 +23,7 @@ func (Module) Run(ctx *core.Context) error {
 	if err != nil {
 		return err
 	}
+	ctx.Logger.Info(fmt.Sprintf("DLL search entries enumerated: %d", len(findings)))
 	reported := 0
 	for _, finding := range findings {
 		if finding.Severity == "Info" {
@@ -37,7 +37,7 @@ func (Module) Run(ctx *core.Context) error {
 	if reported == 0 {
 		ctx.Logger.Info("No risky DLL search path entries matched the default heuristics.")
 	}
-	for _, finding := range internal.Limit(findings, 40) {
+	for _, finding := range findings {
 		if finding.Severity == "Info" {
 			ctx.Logger.Verbose(fmt.Sprintf("KnownDLL : %s", finding.Path))
 		}

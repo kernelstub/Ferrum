@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"ferrum/core"
-	"ferrum/internal"
 	win "ferrum/windows/facade"
 )
 
@@ -25,8 +24,10 @@ func (Module) Run(ctx *core.Context) error {
 	if err != nil {
 		return err
 	}
+	ctx.Logger.Info(fmt.Sprintf("Services enumerated: %d", len(services)))
 	reported := 0
 	for _, service := range services {
+		ctx.Logger.Verbose(fmt.Sprintf("service inventory : name=%s display=%s state=%s start=%s account=%s pid=%d type=%d path=%s", service.Name, service.DisplayName, service.State, service.StartType, service.Account, service.ProcessID, service.ServiceType, service.BinaryPath))
 		reasons := serviceReasons(service)
 		if len(reasons) == 0 {
 			continue
@@ -38,7 +39,6 @@ func (Module) Run(ctx *core.Context) error {
 	if reported == 0 {
 		ctx.Logger.Info("No service configuration stood out from the default heuristics.")
 	}
-	ctx.Logger.Verbose(fmt.Sprintf("Services enumerated: %d", len(services)))
 	return nil
 }
 
@@ -58,7 +58,7 @@ func serviceReasons(service win.ServiceInfo) []string {
 	if service.StartType == "Auto" && service.State != "Running" {
 		reasons = append(reasons, "auto-start not running")
 	}
-	return internal.Limit(reasons, 4)
+	return reasons
 }
 
 func isUnquotedPathWithSpaces(path string) bool {

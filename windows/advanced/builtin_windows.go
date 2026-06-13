@@ -159,9 +159,6 @@ func protocolFindings() []AdvancedFinding {
 					findings = append(findings, AdvancedFinding{Area: "Protocols", Target: root.name + `\` + base + `\` + key, Name: value.Name, Value: value.Value, Severity: "Medium", Reason: "custom URL protocol handler"})
 				}
 			}
-			if len(findings) >= advancedLimit {
-				return findings
-			}
 		}
 	}
 	return findings

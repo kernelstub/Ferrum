@@ -24,15 +24,21 @@ func (Module) Run(ctx *core.Context) error {
 	if err != nil {
 		return err
 	}
+	ctx.Logger.Info(fmt.Sprintf("Environment variables inspected: %d", len(vars)))
+	reported := 0
 	for _, env := range vars {
+		ctx.Logger.Verbose(fmt.Sprintf("environment inventory : %s=%s", env.Name, env.Value))
 		reason := envReason(env)
 		if reason == "" {
 			continue
 		}
+		reported++
 		ctx.Logger.Success(fmt.Sprintf("%s > %s", env.Name, reason))
 		ctx.Logger.Verbose(fmt.Sprintf("%s=%s", env.Name, env.Value))
 	}
-	ctx.Logger.Verbose(fmt.Sprintf("Environment variables inspected: %d", len(vars)))
+	if reported == 0 {
+		ctx.Logger.Info("No environment variables matched the default audit heuristics.")
+	}
 	return nil
 }
 

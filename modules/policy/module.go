@@ -23,6 +23,7 @@ func (Module) Run(ctx *core.Context) error {
 	if err != nil {
 		return err
 	}
+	ctx.Logger.Info(fmt.Sprintf("Policy checks returned: %d", len(findings)))
 	for _, finding := range findings {
 		ctx.Logger.Success(fmt.Sprintf("%s %s > %s", finding.Severity, finding.Name, finding.Reason))
 		ctx.Logger.Verbose(fmt.Sprintf("%s = %s", finding.Name, finding.Value))

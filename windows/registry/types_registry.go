@@ -3,6 +3,9 @@ package registry
 type CLSIDEntry struct {
 	CLSID string
 	Kind  string
+	Path  string
+	Name  string
+	Type  uint32
 	Value string
 }
 

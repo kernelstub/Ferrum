@@ -146,10 +146,3 @@ func sortAdvanced(findings []AdvancedFinding) {
 		return findings[i].Target < findings[j].Target
 	})
 }
-
-func limitAdvanced(findings []AdvancedFinding) []AdvancedFinding {
-	if len(findings) <= advancedLimit {
-		return findings
-	}
-	return findings[:advancedLimit]
-}

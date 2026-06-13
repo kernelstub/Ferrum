@@ -8,13 +8,10 @@ import (
 	"sync"
 
 	"ferrum/core"
-	"ferrum/internal"
 	win "ferrum/windows/facade"
 )
 
 const maxProcessWorkers = 16
-const maxVerboseCLSID = 40
-const maxProcMonCandidates = 120
 
 func init() {
 	core.Register(Module{})
@@ -41,14 +38,16 @@ func (Module) Run(ctx *core.Context) error {
 	ctx.Logger.Info("Inspecting process security context...")
 	enriched := enrichProcesses(ctx, processes)
 	sortProcesses(enriched)
+	ctx.Logger.Info(fmt.Sprintf("Processes enumerated: %d", len(enriched)))
 
 	interesting := 0
 	for _, process := range enriched {
-		if !process.Interesting {
-			continue
+		status := "process"
+		if process.Interesting {
+			interesting++
+			status = "privileged/elevated process"
 		}
-		interesting++
-		ctx.Logger.Success(fmt.Sprintf("%s[%d] > %s", process.Name, process.PID, process.Label()))
+		ctx.Logger.Success(fmt.Sprintf("%s[%d] > %s > %s", process.Name, process.PID, status, process.Label()))
 		if process.Detail != "" {
 			ctx.Logger.Verbose(fmt.Sprintf("%s[%d] : %s", process.Name, process.PID, process.Detail))
 		}
@@ -62,6 +61,7 @@ func (Module) Run(ctx *core.Context) error {
 	if err != nil {
 		ctx.Logger.Error(fmt.Sprintf("CLSID ProcMon candidate scan: %v", err))
 	} else {
+		ctx.Logger.Info(fmt.Sprintf("CLSID ProcMon candidates: %d", len(candidates)))
 		reportProcMonCandidates(ctx, candidates, interestingProcesses(enriched))
 	}
 
@@ -76,11 +76,16 @@ func (Module) Run(ctx *core.Context) error {
 		ctx.Logger.Info("No HKCU CLSID registrations found.")
 		return nil
 	}
+	ctx.Logger.Info(fmt.Sprintf("HKCU CLSID values enumerated: %d", len(entries)))
 
 	for _, entry := range summarizeCLSID(entries) {
-		ctx.Logger.Success(fmt.Sprintf("HKCU\\Software\\Classes\\CLSID\\%s > %s", entry.CLSID, entry.Kind))
+		name := entry.Name
+		if name == "" {
+			name = "(Default)"
+		}
+		ctx.Logger.Success(fmt.Sprintf("%s > %s > %s", entry.Path, name, entry.Kind))
 		if entry.Value != "" {
-			ctx.Logger.Verbose(fmt.Sprintf("%s : %s", entry.CLSID, entry.Value))
+			ctx.Logger.Verbose(fmt.Sprintf("%s : type=%d value=%s", entry.CLSID, entry.Type, entry.Value))
 		}
 	}
 
@@ -106,18 +111,16 @@ func reportProcMonCandidates(ctx *core.Context, candidates []win.CLSIDProcMonCan
 	processLabel := "NT AUTHORITY\\SYSTEM / privileged COM client"
 	if len(processes) > 0 {
 		names := make([]string, 0, len(processes))
-		for _, process := range internal.Limit(processes, 8) {
+		for _, process := range processes {
 			names = append(names, fmt.Sprintf("%s[%d]", process.Name, process.PID))
 		}
-		processLabel = strings.Join(names, ", ")
+		processLabel = fmt.Sprintf("%d privileged/elevated process(es)", len(processes))
+		ctx.Logger.Info("Privileged/elevated process set: " + strings.Join(names, ", "))
 	}
 
-	for _, candidate := range internal.Limit(candidates, maxProcMonCandidates) {
+	for _, candidate := range candidates {
 		ctx.Logger.Success(fmt.Sprintf("%s > %s > %s", processLabel, candidate.Path, candidate.Result))
 		ctx.Logger.Verbose(fmt.Sprintf("%s : CLSID=%s machine=%s", candidate.Kind, candidate.CLSID, candidate.MachineValue))
-	}
-	if len(candidates) > maxProcMonCandidates {
-		ctx.Logger.Info(fmt.Sprintf("CLSID ProcMon candidate output limited to %d of %d rows.", maxProcMonCandidates, len(candidates)))
 	}
 	ctx.Logger.Info("These rows model the ProcMon filter Result=NAME NOT FOUND for HKCU COM override paths. Confirm live process access with ProcMon or ETW before treating a candidate as reachable.")
 }
@@ -222,7 +225,7 @@ func detail(token win.TokenInfo) string {
 		parts = append(parts, "elevated=true")
 	}
 	if len(token.Privileges) > 0 {
-		parts = append(parts, "privileges="+strings.Join(internal.Limit(token.Privileges, 8), ","))
+		parts = append(parts, "privileges="+strings.Join(token.Privileges, ","))
 	}
 	return strings.Join(parts, " ")
 }
@@ -241,7 +244,10 @@ func summarizeCLSID(entries []win.CLSIDEntry) []win.CLSIDEntry {
 		if entries[i].CLSID != entries[j].CLSID {
 			return entries[i].CLSID < entries[j].CLSID
 		}
-		return entries[i].Kind < entries[j].Kind
+		if entries[i].Path != entries[j].Path {
+			return entries[i].Path < entries[j].Path
+		}
+		return entries[i].Name < entries[j].Name
 	})
-	return internal.Limit(entries, maxVerboseCLSID)
+	return entries
 }

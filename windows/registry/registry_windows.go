@@ -4,6 +4,7 @@ package registry
 
 import (
 	"fmt"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -26,6 +27,7 @@ var (
 	procRegCloseKey     = advapi32.NewProc("RegCloseKey")
 	procRegEnumKeyEx    = advapi32.NewProc("RegEnumKeyExW")
 	procRegEnumValue    = advapi32.NewProc("RegEnumValueW")
+	procRegQueryInfoKey = advapi32.NewProc("RegQueryInfoKeyW")
 	procRegQueryValueEx = advapi32.NewProc("RegQueryValueExW")
 )
 
@@ -36,7 +38,8 @@ type RegistryValue struct {
 }
 
 func EnumerateHKCUCLSID() ([]CLSIDEntry, error) {
-	root, err := openKey(hkeyCurrentUser, `Software\Classes\CLSID`)
+	const base = `Software\Classes\CLSID`
+	root, err := openKey(hkeyCurrentUser, base)
 	if err != nil {
 		return nil, err
 	}
@@ -49,17 +52,56 @@ func EnumerateHKCUCLSID() ([]CLSIDEntry, error) {
 
 	entries := make([]CLSIDEntry, 0)
 	for _, clsid := range clsids {
-		for _, kind := range []string{"InprocServer32", "LocalServer32", "TreatAs", "ProgID"} {
-			subkey, err := openKey(root, clsid+`\`+kind)
-			if err != nil {
-				continue
-			}
-			value, _ := queryDefaultValue(subkey)
-			procRegCloseKey.Call(subkey)
-			entries = append(entries, CLSIDEntry{CLSID: clsid, Kind: kind, Value: value})
-		}
+		clsidPath := clsid
+		walkCLSIDKey(root, base, clsid, clsidPath, &entries)
 	}
 	return entries, nil
+}
+
+func walkCLSIDKey(parent uintptr, base, clsid, relative string, entries *[]CLSIDEntry) {
+	key, err := openKey(parent, relative)
+	if err != nil {
+		return
+	}
+	defer procRegCloseKey.Call(key)
+
+	path := base + `\` + relative
+	kind := clsidKind(relative)
+	values, err := enumValues(key)
+	if err == nil {
+		for _, value := range values {
+			*entries = append(*entries, CLSIDEntry{
+				CLSID: clsid,
+				Kind:  kind,
+				Path:  `HKCU\` + path,
+				Name:  displayRegistryName(value.Name),
+				Type:  value.Type,
+				Value: value.Value,
+			})
+		}
+	}
+	subkeyNames, err := enumSubkeys(key)
+	if err != nil {
+		return
+	}
+	for _, subkey := range subkeyNames {
+		walkCLSIDKey(parent, base, clsid, relative+`\`+subkey, entries)
+	}
+}
+
+func clsidKind(relative string) string {
+	parts := strings.Split(relative, `\`)
+	if len(parts) < 2 {
+		return "(CLSID)"
+	}
+	return parts[1]
+}
+
+func displayRegistryName(name string) string {
+	if name == "" {
+		return "(Default)"
+	}
+	return name
 }
 
 func EnumerateCLSIDProcMonCandidates() ([]CLSIDProcMonCandidate, error) {
@@ -124,9 +166,17 @@ func CloseKey(key uintptr) {
 }
 
 func enumSubkeys(key uintptr) ([]string, error) {
+	info, err := queryKeyInfo(key)
+	if err != nil {
+		return nil, err
+	}
+	nameCapacity := info.MaxSubKeyLen + 1
+	if nameCapacity < 256 {
+		nameCapacity = 256
+	}
 	keys := []string{}
 	for index := uint32(0); ; index++ {
-		name := make([]uint16, 256)
+		name := make([]uint16, nameCapacity)
 		length := uint32(len(name))
 		ret, _, _ := procRegEnumKeyEx.Call(key, uintptr(index), uintptr(unsafe.Pointer(&name[0])), uintptr(unsafe.Pointer(&length)), 0, 0, 0, 0)
 		if ret == errorNoMoreItems {
@@ -183,11 +233,28 @@ func registryValues(parent uintptr, path string) ([]RegistryValue, error) {
 	}
 	defer procRegCloseKey.Call(key)
 
+	return enumValues(key)
+}
+
+func enumValues(key uintptr) ([]RegistryValue, error) {
+	info, err := queryKeyInfo(key)
+	if err != nil {
+		return nil, err
+	}
+	nameCapacity := info.MaxValueNameLen + 1
+	if nameCapacity < 512 {
+		nameCapacity = 512
+	}
+	dataCapacity := info.MaxValueLen
+	if dataCapacity < 8192 {
+		dataCapacity = 8192
+	}
+
 	values := []RegistryValue{}
 	for index := uint32(0); ; index++ {
-		name := make([]uint16, 512)
+		name := make([]uint16, nameCapacity)
 		nameLen := uint32(len(name))
-		data := make([]byte, 8192)
+		data := make([]byte, dataCapacity)
 		dataLen := uint32(len(data))
 		var typ uint32
 		ret, _, _ := procRegEnumValue.Call(key, uintptr(index), uintptr(unsafe.Pointer(&name[0])), uintptr(unsafe.Pointer(&nameLen)), 0, uintptr(unsafe.Pointer(&typ)), uintptr(unsafe.Pointer(&data[0])), uintptr(unsafe.Pointer(&dataLen)))
@@ -225,4 +292,36 @@ func registryDataString(data []byte, typ uint32) string {
 		return wintypes.CleanRegistryString(syscall.UTF16ToString(chars))
 	}
 	return fmt.Sprintf("%x", data)
+}
+
+type keyInfo struct {
+	MaxSubKeyLen    uint32
+	MaxValueNameLen uint32
+	MaxValueLen     uint32
+}
+
+func queryKeyInfo(key uintptr) (keyInfo, error) {
+	var subKeys uint32
+	var maxSubKeyLen uint32
+	var values uint32
+	var maxValueNameLen uint32
+	var maxValueLen uint32
+	ret, _, _ := procRegQueryInfoKey.Call(
+		key,
+		0,
+		0,
+		0,
+		uintptr(unsafe.Pointer(&subKeys)),
+		uintptr(unsafe.Pointer(&maxSubKeyLen)),
+		0,
+		uintptr(unsafe.Pointer(&values)),
+		uintptr(unsafe.Pointer(&maxValueNameLen)),
+		uintptr(unsafe.Pointer(&maxValueLen)),
+		0,
+		0,
+	)
+	if ret != 0 {
+		return keyInfo{}, syscall.Errno(ret)
+	}
+	return keyInfo{MaxSubKeyLen: maxSubKeyLen, MaxValueNameLen: maxValueNameLen, MaxValueLen: maxValueLen}, nil
 }

@@ -24,8 +24,10 @@ func (Module) Run(ctx *core.Context) error {
 	if err != nil {
 		return err
 	}
+	ctx.Logger.Info(fmt.Sprintf("Drivers enumerated: %d", len(drivers)))
 	reported := 0
 	for _, driver := range drivers {
+		ctx.Logger.Verbose(fmt.Sprintf("driver inventory : name=%s state=%s start=%s path=%s", driver.Name, driver.State, driver.StartType, driver.BinaryPath))
 		reason := driverReason(driver)
 		if reason == "" {
 			continue
@@ -37,7 +39,6 @@ func (Module) Run(ctx *core.Context) error {
 	if reported == 0 {
 		ctx.Logger.Info("No driver load paths matched the suspicious-path heuristics.")
 	}
-	ctx.Logger.Verbose(fmt.Sprintf("Drivers enumerated: %d", len(drivers)))
 	return nil
 }
 

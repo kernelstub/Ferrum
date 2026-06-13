@@ -24,8 +24,10 @@ func (Module) Run(ctx *core.Context) error {
 	if err != nil {
 		return err
 	}
+	ctx.Logger.Info(fmt.Sprintf("Process mitigations sampled: %d", len(items)))
 	reported := 0
 	for _, item := range items {
+		ctx.Logger.Verbose(fmt.Sprintf("mitigation inventory : name=%s pid=%d DEP=%s ASLR=%s StrictHandle=%s CFG=%s", item.Name, item.PID, item.DEP, item.ASLR, item.Strict, item.CFG))
 		reason := mitigationReason(item)
 		if reason == "" {
 			continue
@@ -37,7 +39,6 @@ func (Module) Run(ctx *core.Context) error {
 	if reported == 0 {
 		ctx.Logger.Info("No accessible process mitigation gaps matched the default heuristics.")
 	}
-	ctx.Logger.Verbose(fmt.Sprintf("Processes sampled: %d", len(items)))
 	return nil
 }
 

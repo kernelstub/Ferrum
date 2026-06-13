@@ -24,11 +24,13 @@ func (Module) Run(ctx *core.Context) error {
 	if err != nil {
 		return err
 	}
+	ctx.Logger.Info(fmt.Sprintf("Startup entries enumerated: %d", len(entries)))
 	if len(entries) == 0 {
 		ctx.Logger.Info("No startup entries found in common locations.")
 		return nil
 	}
 	for _, entry := range entries {
+		ctx.Logger.Verbose(fmt.Sprintf("startup inventory : scope=%s location=%s name=%s command=%s", entry.Scope, entry.Location, entry.Name, entry.Command))
 		ctx.Logger.Success(fmt.Sprintf("%s\\%s > %s", entry.Scope, entry.Name, startupReason(entry.Command)))
 		ctx.Logger.Verbose(fmt.Sprintf("%s : %s", entry.Location, entry.Command))
 	}

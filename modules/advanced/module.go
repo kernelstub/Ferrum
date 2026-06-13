@@ -145,6 +145,7 @@ func (m module) Run(ctx *core.Context) error {
 		ctx.Logger.Info("No findings returned for " + m.name + ".")
 		return nil
 	}
+	ctx.Logger.Info(fmt.Sprintf("%s findings returned: %d", m.name, len(findings)))
 	for _, finding := range findings {
 		ctx.Logger.Success(fmt.Sprintf("%s %s > %s", finding.Severity, finding.Target, finding.Reason))
 		if finding.Name != "" || finding.Value != "" {
